@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 	"os"
-	"time"
 	"strconv"
+	"time"
 )
 
 func mustEnvInt(key string, def int) int {
@@ -22,7 +22,7 @@ func mustEnvInt(key string, def int) int {
 
 func Start(ctx context.Context, syncFn func(), refTok func()) {
 	go func() {
-		dataTicker := time.NewTicker(time.Duration(mustEnvInt("MEDIA_SYNC_TIME", 45)) * time.Minute) 
+		dataTicker := time.NewTicker(time.Duration(mustEnvInt("MEDIA_SYNC_TIME", 45)) * time.Minute)
 		tokenTicker := time.NewTicker(time.Duration(mustEnvInt("TOKEN_REFRESH_TIME", 30)) * time.Hour * 24)
 		defer dataTicker.Stop()
 		defer tokenTicker.Stop()

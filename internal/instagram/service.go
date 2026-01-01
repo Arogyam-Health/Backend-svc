@@ -48,7 +48,6 @@ func RefreshAccessToken(client *http.Client, current string) (token.Token, error
 		os.Getenv("APP_ID"), os.Getenv("APP_SECRET"), current,
 	)
 
-
 	log.Printf("Refreshing token with URL: %s", url)
 
 	res, err := client.Get(url)

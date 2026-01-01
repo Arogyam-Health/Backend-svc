@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"sync"
 	"log"
+	"sync"
 
 	"backend-service/internal/instagram"
 )
@@ -29,9 +29,9 @@ func (s *Store) SetMedia(list []instagram.Media) {
 func (s *Store) GetByIDs(ids []string) []instagram.Media {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	log.Printf("Fetching media by IDs: %v", ids)
-	
+
 	result := make([]instagram.Media, 0, len(ids))
 	for _, id := range ids {
 		if media, exists := s.media[id]; exists {
@@ -44,7 +44,7 @@ func (s *Store) GetByIDs(ids []string) []instagram.Media {
 func (s *Store) GetAllMedia() []instagram.Media {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	result := make([]instagram.Media, 0, len(s.media))
 	for _, media := range s.media {
 		result = append(result, media)

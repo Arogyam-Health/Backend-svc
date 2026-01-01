@@ -10,6 +10,8 @@ test_token.json
 
 request.sh
 
+app
+
 # Binaries for programs and plugins
 *.exe
 *.dll

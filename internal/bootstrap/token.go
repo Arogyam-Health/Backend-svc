@@ -41,7 +41,7 @@ func InitToken(
 	} else {
 		log.Printf("[BOOTSTRAP] No token found in database: %v", err)
 	}
-	
+
 	// 3. Refresh from Instagram
 	log.Println("[BOOTSTRAP] Refreshing token from Instagram...")
 	newInstagramToken, err := instagram.RefreshAccessToken(client, runtime.Get())
