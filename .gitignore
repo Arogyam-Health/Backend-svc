@@ -1,0 +1,49 @@
+.env
+.env.local
+.env.development.local
+.env.test.local
+
+.secret.env
+
+token.json
+test_token.json
+
+request.sh
+
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build output directories
+/bin/
+/pkg/
+
+# Vendor (remove comment if you commit vendor/)
+vendor/
+
+# Go workspace and module files
+go.work
+go.work.sum
+
+# Dependency management / legacy
+Godeps/
+Gopkg.lock
+
+# Test coverage outputs
+*.coverprofile
+coverage.out
+
+# Test cache / generated test files
+testdata/
+*_test.go.out
+
+# Editor and OS files
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/

@@ -1,0 +1,1 @@
+string media data to postgres to safe from instagram failer to serve content and avoid memory bloat issues

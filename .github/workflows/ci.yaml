@@ -1,0 +1,58 @@
+name: Backend CI
+
+on:
+  push:
+    branches-ignore:
+      - "refs/tags/*"
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ig_test
+          POSTGRES_USER: ig_user
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Goi
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Download deps
+        run: go mod download
+
+      - name: Unit tests
+        run: go test ./internal/... ./api/... ./tests/helpers/...
+
+      - name: Integration tests
+        env:
+          DATABASE_URL: postgres://ig_user:password@localhost:5432/ig_test?sslmode=disable
+          IG_USER_ID: dummy
+        run: go test ./tests/integration/...
+
+      - name: Race detection
+        env:
+          DATABASE_URL: postgres://ig_user:password@localhost:5432/ig_test?sslmode=disable
+          IG_USER_ID: dummy
+        run: go test -race ./internal/... ./api/... ./tests/integration/...
+
+      - name: Build binary (same as Render)
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+          go build -o app ./cmd
