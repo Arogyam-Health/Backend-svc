@@ -52,6 +52,23 @@ func (s *Store) GetAllMedia() []instagram.Media {
 	return result
 }
 
+func (s *Store) GetAllMediaIDs(limit int, mediaType string) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := make([]string, 0, len(s.media))
+	for id, media := range s.media {
+		if mediaType != "" && media.MediaType != mediaType {
+			continue
+		}
+		result = append(result, id)
+		if limit > 0 && len(result) >= limit {
+			break
+		}
+	}
+	return result
+}
+
 func (s *Store) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

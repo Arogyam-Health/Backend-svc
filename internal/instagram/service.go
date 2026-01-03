@@ -18,28 +18,61 @@ type Service struct {
 }
 
 func (s *Service) FetchMedia() ([]Media, error) {
+	return s.FetchMediaWithLimit(0) // 0 means fetch all
+}
+
+func (s *Service) FetchMediaWithLimit(limit int) ([]Media, error) {
 	token := s.TokenStore.Get()
+	var allMedia []Media
 
 	url := fmt.Sprintf(
 		os.Getenv("FB_API_BASE_URL")+"/%s/media?fields=id,caption,media_type,media_url,permalink,timestamp&access_token=%s",
 		s.IgUserID, token,
 	)
 
-	fmt.Println(url)
-
-	res, err := s.Client.Get(url)
-	if err != nil {
-		return nil, err
+	if limit > 0 {
+		url = fmt.Sprintf("%s&limit=%d", url, limit)
 	}
 
-	defer res.Body.Close()
+	for url != "" {
+		res, err := s.Client.Get(url)
+		if err != nil {
+			return nil, err
+		}
 
-	var result struct {
-		Data []Media `json:"data"`
+		if res.StatusCode != http.StatusOK {
+			log.Printf("[GRAPH API] through error with status %s", res.Status)
+			return nil, fmt.Errorf("[GRAPH API] through error with status %s", res.Status)
+		}
+
+		var result struct {
+			Data   []Media `json:"data"`
+			Paging struct {
+				Next string `json:"next"`
+			} `json:"paging"`
+		}
+
+		err = json.NewDecoder(res.Body).Decode(&result)
+		res.Body.Close()
+
+		if err != nil {
+			return nil, err
+		}
+
+		allMedia = append(allMedia, result.Data...)
+
+		if limit > 0 && len(allMedia) >= limit {
+			return allMedia[:limit], nil
+		}
+
+		url = result.Paging.Next
+
+		if url == "" {
+			break
+		}
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&result)
-	return result.Data, err
+	return allMedia, nil
 }
 
 func RefreshAccessToken(client *http.Client, current string) (token.Token, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"backend-service/api"
 	"backend-service/internal/bootstrap"
@@ -45,12 +46,19 @@ func main() {
 	}
 
 	syncFn := func() {
-		media, err := service.FetchMedia()
-		if err != nil {
-			log.Printf("[MEDIA] Error fetching media: %v", err)
-			return
+		const maxAttempts = 3
+		for i := 1; i <= maxAttempts; i++ {
+			media, err := service.FetchMedia()
+			if err == nil {
+				store.SetMedia(media)
+				return
+			}
+			log.Printf("[MEDIA] Attempt %d/%d failed: %v", i, maxAttempts, err)
+			if i < maxAttempts {
+				time.Sleep(time.Duration(i) * time.Second) // simple backoff: 1s, 2s, ...
+			}
 		}
-		store.SetMedia(media)
+		log.Printf("[MEDIA] All attempts to fetch media failed")
 	}
 
 	refTok := func() {
@@ -75,9 +83,10 @@ func main() {
 	defer cancel()
 
 	http.HandleFunc("/media", api.MediaHandler(store))
+	http.HandleFunc("/media/getIdsOnly", api.MediaIdsHandler(store))
 	http.HandleFunc("/ready", api.ReadyHandler)
 
-	log.Printf("Started server on localhost:%s", cfg.Port)
+	log.Printf("Started server on %s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

@@ -38,6 +38,7 @@ Gopkg.lock
 # Test coverage outputs
 *.coverprofile
 coverage.out
+coverage.html
 
 # Test cache / generated test files
 testdata/

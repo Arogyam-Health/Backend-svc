@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func MediaHandler(store *cache.Store) http.HandlerFunc {
@@ -43,7 +44,28 @@ func MediaHandler(store *cache.Store) http.HandlerFunc {
 	}
 }
 
-// create an /ready hadnler to check if the service is up
+func MediaIdsHandler(store *cache.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+
+		limit := 0
+		if limitStr := q.Get("limit"); limitStr != "" {
+			if n, err := strconv.Atoi(limitStr); err == nil {
+				limit = n
+			}
+		}
+
+		mediaType := q.Get("media_type")
+
+		ids := store.GetAllMediaIDs(limit, mediaType)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"ids":   ids,
+			"count": len(ids),
+		})
+	}
+}
+
 func ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
