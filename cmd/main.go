@@ -13,6 +13,7 @@ import (
 	"backend-service/internal/instagram"
 	"backend-service/internal/scheduler"
 	"backend-service/internal/token"
+	"backend-service/middleware"
 )
 
 func main() {
@@ -82,12 +83,16 @@ func main() {
 	scheduler.Start(ctx, syncFn, refTok)
 	defer cancel()
 
-	http.HandleFunc("/media", api.MediaHandler(store))
-	http.HandleFunc("/media/getIdsOnly", api.MediaIdsHandler(store))
-	http.HandleFunc("/ready", api.ReadyHandler)
+	mux := http.NewServeMux()
+	
+	mux.HandleFunc("/media", api.MediaHandler(store))
+	mux.HandleFunc("/media/getIdsOnly", api.MediaIdsHandler(store))
+	mux.HandleFunc("/ready", api.ReadyHandler)
+
+	handler := middleware.CORS(mux)
 
 	log.Printf("Started server on %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, nil); err != nil {
+	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
