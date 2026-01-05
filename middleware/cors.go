@@ -1,9 +1,10 @@
 package middleware
 
 import "net/http"
+
 func CORS(next http.Handler) http.Handler {
 	allowed := map[string]bool{
-		"http://127.0.0.1:9292":       true,
+		"http://127.0.0.1:9292":        true,
 		"https://theobesitykiller.com": true,
 	}
 

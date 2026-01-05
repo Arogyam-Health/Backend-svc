@@ -84,7 +84,7 @@ func main() {
 	defer cancel()
 
 	mux := http.NewServeMux()
-	
+
 	mux.HandleFunc("/media", api.MediaHandler(store))
 	mux.HandleFunc("/media/getIdsOnly", api.MediaIdsHandler(store))
 	mux.HandleFunc("/ready", api.ReadyHandler)

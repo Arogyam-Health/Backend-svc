@@ -2,6 +2,7 @@ package cache
 
 import (
 	"log"
+	"sort"
 	"sync"
 
 	"backend-service/internal/instagram"
@@ -56,12 +57,24 @@ func (s *Store) GetAllMediaIDs(limit int, mediaType string) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	result := make([]string, 0, len(s.media))
-	for id, media := range s.media {
+	// Collect media that matches the filter
+	filtered := make([]instagram.Media, 0, len(s.media))
+	for _, media := range s.media {
 		if mediaType != "" && media.MediaType != mediaType {
 			continue
 		}
-		result = append(result, id)
+		filtered = append(filtered, media)
+	}
+
+	// Sort by timestamp descending (latest first)
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Timestamp > filtered[j].Timestamp
+	})
+
+	// Extract IDs with limit
+	result := make([]string, 0, len(filtered))
+	for _, media := range filtered {
+		result = append(result, media.ID)
 		if limit > 0 && len(result) >= limit {
 			break
 		}
