@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -12,18 +13,20 @@ import (
 	"backend-service/tests/helpers"
 )
 
-func TestBootstrapLoadsFromPostgres(t *testing.T) {
+func TestBootstrapInitTokenFromRedis(t *testing.T) {
 	srv := dummy.StartDummyServer()
 	defer srv.Close()
 
-	db := helpers.SetupTestDB(t)
-	helpers.InsertToken(db, "DB_TOKEN", time.Now().Add(30*24*time.Hour))
+	redisClient := helpers.SetupTestRedis(t)
+	// Use timestamp to create unique token for this test
+	testToken := fmt.Sprintf("REDIS_TOKEN_%d", time.Now().UnixNano())
+	helpers.InsertTokenRedis(redisClient, testToken, time.Now().Add(30*24*time.Hour))
 
 	rt := token.NewRuntime()
 
 	err := bootstrap.InitToken(
 		rt,
-		db,
+		redisClient,
 		&http.Client{},
 		"test_token.json",
 	)
@@ -32,8 +35,8 @@ func TestBootstrapLoadsFromPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if rt.Get() != "DB_TOKEN" {
-		t.Fatalf("expected DB_TOKEN, got %s", rt.Get())
+	if rt.Get() != testToken {
+		t.Fatalf("expected %s, got %s", testToken, rt.Get())
 	}
 
 	if _, err := os.Stat("test_token.json"); err != nil {

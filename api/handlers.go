@@ -2,13 +2,14 @@ package api
 
 import (
 	"backend-service/internal/cache"
+	"backend-service/internal/instagram"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-func MediaHandler(store *cache.Store) http.HandlerFunc {
+func MediaHandler(store *cache.Store, service *instagram.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		w.Header().Set("Content-Type", "application/json")
@@ -27,6 +28,19 @@ func MediaHandler(store *cache.Store) http.HandlerFunc {
 			if start <= len(ids)-1 {
 				idlst = append(idlst, ids[start:])
 			}
+
+			// Check if requested IDs exist in cache
+			allExist, missing := store.HasMedia(idlst)
+			if !allExist {
+				log.Printf("[CACHE] Missing media IDs: %v. Fetching fresh data...", missing)
+				if media, err := service.FetchMedia(); err == nil {
+					store.SetMedia(media)
+					log.Printf("[CACHE] Refreshed cache with %d media items", len(media))
+				} else {
+					log.Printf("[CACHE] Failed to refresh media: %v", err)
+				}
+			}
+
 			json.NewEncoder(w).Encode(store.GetByIDs(idlst))
 			return
 		}
@@ -44,7 +58,7 @@ func MediaHandler(store *cache.Store) http.HandlerFunc {
 	}
 }
 
-func MediaIdsHandler(store *cache.Store) http.HandlerFunc {
+func MediaIdsHandler(store *cache.Store, service *instagram.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		w.Header().Set("Content-Type", "application/json")

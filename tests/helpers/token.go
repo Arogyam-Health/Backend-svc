@@ -1,19 +1,37 @@
 package helpers
 
 import (
-	"database/sql"
+	"context"
+	"encoding/json"
+	"os"
 	"time"
+
+	"backend-service/internal/token"
+
+	"github.com/redis/go-redis/v9"
 )
 
-func InsertToken(db *sql.DB, token string, expiry time.Time) error {
-	_, err := db.Exec(`
-		INSERT INTO instagram_tokens (id, access_token, expires_at)
-		VALUES (TRUE, $1, $2)
-		ON CONFLICT (id)
-		DO UPDATE SET
-			access_token = EXCLUDED.access_token,
-			expires_at = EXCLUDED.expires_at
-	`, token, expiry)
+func InsertTokenRedis(client *redis.Client, accessToken string, expiry time.Time) error {
+	tok := token.Token{
+		AccessToken: accessToken,
+		ExpiresAt:   expiry,
+	}
 
-	return err
+	data, err := json.Marshal(tok)
+	if err != nil {
+		return err
+	}
+
+	ttl := time.Until(expiry)
+	if ttl < 0 {
+		ttl = 0
+	}
+
+	// Use test-specific key from environment to avoid affecting production
+	testTokenKey := os.Getenv("REDIS_TOKEN_KEY")
+	if testTokenKey == "" {
+		testTokenKey = "test_instagram_token" // fallback
+	}
+
+	return client.Set(context.Background(), testTokenKey, data, ttl).Err()
 }

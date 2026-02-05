@@ -4,13 +4,15 @@ import (
 	"log"
 	"sort"
 	"sync"
+	"time"
 
 	"backend-service/internal/instagram"
 )
 
 type Store struct {
-	mu    sync.RWMutex
-	media map[string]instagram.Media
+	mu        sync.RWMutex
+	media     map[string]instagram.Media
+	updatedAt time.Time
 }
 
 func NewStore() *Store {
@@ -25,6 +27,8 @@ func (s *Store) SetMedia(list []instagram.Media) {
 	for _, media := range list {
 		s.media[media.ID] = media
 	}
+	s.updatedAt = time.Now()
+	log.Printf("[CACHE] Updated %d media items at %v", len(list), s.updatedAt.Format(time.RFC3339))
 }
 
 func (s *Store) GetByIDs(ids []string) []instagram.Media {
@@ -86,4 +90,36 @@ func (s *Store) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.media = make(map[string]instagram.Media)
+	s.updatedAt = time.Time{}
+}
+
+// IsFresh returns true if cache was updated within the last hour
+func (s *Store) IsFresh() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.updatedAt.IsZero() {
+		return false
+	}
+	return time.Since(s.updatedAt) < time.Hour
+}
+
+// GetLastUpdateTime returns when the cache was last updated
+func (s *Store) GetLastUpdateTime() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.updatedAt
+}
+
+// HasMedia checks if specific media IDs exist in cache
+func (s *Store) HasMedia(ids []string) (bool, []string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	missing := []string{}
+	for _, id := range ids {
+		if _, exists := s.media[id]; !exists {
+			missing = append(missing, id)
+		}
+	}
+	return len(missing) == 0, missing
 }

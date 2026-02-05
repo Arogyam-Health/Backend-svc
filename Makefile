@@ -15,6 +15,7 @@ help:
 	@echo "  make test             - Run all tests"
 	@echo "  make test-integration - Run integration tests only"
 	@echo "  make test-unit        - Run unit tests only"
+	@echo "  make test-clean			 - remove test cache files"
 	@echo "  make pre-commit       - Run pre-commit checks (required before commit)"
 	@echo "  make fmt              - Format code"
 	@echo "  make vet              - Run go vet"
@@ -47,6 +48,14 @@ test-integration:
 test-unit:
 	@echo "Running unit tests..."
 	$(GO) test $(GOFLAGS) ./internal/...
+
+# remove test cache files
+test-clean:
+	@echo "Cleaning test cache files..."
+	rm -f test_token.json
+	rm -f token.json
+	$(GO) clean -testcache
+	@echo "Test cache cleaned"
 
 # Format code
 fmt:

@@ -20,11 +20,11 @@ func main() {
 	cfg := config.LoadConfig()
 	store := cache.NewStore()
 
-	db, err := config.ConnectPostgres()
+	redisClient, err := config.ConnectRedis()
 	if err != nil {
-		log.Fatal("failed to connect postgres:", err)
+		log.Fatal("failed to connect to Redis:", err)
 	}
-	defer db.Close()
+	defer redisClient.Close()
 
 	runtimeToken := token.NewRuntime()
 
@@ -33,7 +33,7 @@ func main() {
 	// Bootstrap
 	if err := bootstrap.InitToken(
 		runtimeToken,
-		db,
+		redisClient,
 		client,
 		"token.json",
 	); err != nil {
@@ -46,20 +46,20 @@ func main() {
 		TokenStore: runtimeToken,
 	}
 
-	syncFn := func() {
-		const maxAttempts = 3
-		for i := 1; i <= maxAttempts; i++ {
-			media, err := service.FetchMedia()
-			if err == nil {
-				store.SetMedia(media)
-				return
-			}
-			log.Printf("[MEDIA] Attempt %d/%d failed: %v", i, maxAttempts, err)
-			if i < maxAttempts {
-				time.Sleep(time.Duration(i) * time.Second) // simple backoff: 1s, 2s, ...
-			}
+	// Initial media sync at bootstrap
+	log.Println("[BOOTSTRAP] Fetching initial media...")
+	const maxAttempts = 3
+	for i := 1; i <= maxAttempts; i++ {
+		media, err := service.FetchMedia()
+		if err == nil {
+			store.SetMedia(media)
+			log.Printf("[BOOTSTRAP] Successfully cached %d media items", len(media))
+			break
 		}
-		log.Printf("[MEDIA] All attempts to fetch media failed")
+		log.Printf("[BOOTSTRAP] Media fetch attempt %d/%d failed: %v", i, maxAttempts, err)
+		if i < maxAttempts {
+			time.Sleep(time.Duration(i) * time.Second)
+		}
 	}
 
 	refTok := func() {
@@ -71,7 +71,7 @@ func main() {
 			}
 			runtimeToken.Set(newToken)
 			token.SaveToDisk("token.json", &newToken)
-			token.SaveToDB(db, newToken)
+			token.SaveToRedis(redisClient, newToken)
 
 			log.Printf("[TOKEN] refreshed access token")
 		} else {
@@ -80,13 +80,14 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	scheduler.Start(ctx, syncFn, refTok)
+	// Start scheduler for token refresh only (media is fetched on-demand)
+	scheduler.StartTokenRefresh(ctx, refTok)
 	defer cancel()
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/media", api.MediaHandler(store))
-	mux.HandleFunc("/media/getIdsOnly", api.MediaIdsHandler(store))
+	mux.HandleFunc("/media", api.MediaHandler(store, &service))
+	mux.HandleFunc("/media/getIdsOnly", api.MediaIdsHandler(store, &service))
 	mux.HandleFunc("/ready", api.ReadyHandler)
 
 	handler := middleware.CORS(mux)

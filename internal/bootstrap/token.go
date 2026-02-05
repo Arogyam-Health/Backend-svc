@@ -1,18 +1,19 @@
 package bootstrap
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"time"
 
 	"backend-service/internal/instagram"
 	"backend-service/internal/token"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func InitToken(
 	runtime *token.TokenRuntime,
-	db *sql.DB,
+	redisClient *redis.Client,
 	client *http.Client,
 	tokenPath string,
 ) error {
@@ -29,17 +30,17 @@ func InitToken(
 		log.Printf("[BOOTSTRAP] No token found on disk: %v", err)
 	}
 
-	// 2. Try Postgres
-	if t, err := token.LoadFromDB(db); err == nil {
+	// 2. Try Redis
+	if t, err := token.LoadFromRedis(redisClient); err == nil {
 		if time.Now().Before(t.ExpiresAt) {
 			runtime.Set(*t)
 			token.SaveToDisk(tokenPath, t)
 			return nil
 		} else {
-			log.Printf("[BOOTSTRAP] Token from database is expired - %v", t.ExpiresAt)
+			log.Printf("[BOOTSTRAP] Token from Redis is expired - %v", t.ExpiresAt)
 		}
 	} else {
-		log.Printf("[BOOTSTRAP] No token found in database: %v", err)
+		log.Printf("[BOOTSTRAP] No token found in Redis: %v", err)
 	}
 
 	// 3. Refresh from Instagram
@@ -60,7 +61,7 @@ func InitToken(
 	log.Println("[BOOTSTRAP] Storing new token...")
 	runtime.Set(newToken)
 	token.SaveToDisk(tokenPath, &newToken)
-	token.SaveToDB(db, newToken)
+	token.SaveToRedis(redisClient, newToken)
 
 	return nil
 }
