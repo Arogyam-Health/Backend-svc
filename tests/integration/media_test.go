@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"os"
 	"testing"
 
 	"backend-service/internal/cache"
@@ -10,6 +11,9 @@ import (
 )
 
 func TestMediaBootstrap(t *testing.T) {
+	// Configure environment to use dummy server
+	os.Setenv("FB_API_BASE_URL", "http://localhost:9090")
+	
 	srv := dummy.StartDummyServer()
 	defer srv.Close()
 

@@ -40,20 +40,23 @@ jobs:
         env:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          FB_API_BASE_URL: ${{ secrets.FB_API_BASE_URL }}
-          APP_ID: ${{ secrets.APP_ID }}
-          APP_SECRET: ${{ secrets.APP_SECRET }}
+          # Integration tests use dummy server, so real credentials are not required
+          # These are kept for compatibility if tests need them later
+          IG_USER_ID: ${{ secrets.IG_USER_ID || 'dummy_user' }}
+          FB_API_BASE_URL: ${{ secrets.FB_API_BASE_URL || 'http://localhost:9090' }}
+          APP_ID: ${{ secrets.APP_ID || 'test_app_id' }}
+          APP_SECRET: ${{ secrets.APP_SECRET || 'test_app_secret' }}
         run: go test -p 1 ./tests/integration/...
 
       - name: Race detection
         env:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          FB_API_BASE_URL: ${{ secrets.FB_API_BASE_URL }}
-          APP_ID: ${{ secrets.APP_ID }}
-          APP_SECRET: ${{ secrets.APP_SECRET }}
+          # Tests use dummy server, so real credentials are not required
+          IG_USER_ID: ${{ secrets.IG_USER_ID || 'dummy_user' }}
+          FB_API_BASE_URL: ${{ secrets.FB_API_BASE_URL || 'http://localhost:9090' }}
+          APP_ID: ${{ secrets.APP_ID || 'test_app_id' }}
+          APP_SECRET: ${{ secrets.APP_SECRET || 'test_app_secret' }}
         run: go test -race ./internal/... ./api/... ./tests/integration/...
 
       - name: Build binary (same as Render)
